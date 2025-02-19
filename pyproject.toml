@@ -1,0 +1,26 @@
+[project]
+name = "pyjiaxun"
+version = "0.1.0"
+description = ""
+authors = [{ name = "Lily White", email = "lilywhite2005@outlook.com" }]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "browser-cookie3 (>=0.20.1,<0.21.0)",
+    "requests (>=2.32.3,<3.0.0)",
+    "peewee (>=3.17.9,<4.0.0)",
+    "click (>=8.1.8,<9.0.0)",
+    "rich (>=13.9.4,<14.0.0)",
+    "appdirs (>=1.4.4,<2.0.0)",
+]
+
+[tool.poetry.scripts]
+pyjiaxun = "pyjiaxun.start:cli"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+pylint = "^3.3.4"
