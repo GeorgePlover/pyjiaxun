@@ -3,6 +3,7 @@ from peewee import (
     CharField,
     BooleanField,
     IntegerField,
+    DateTimeField,
     ForeignKeyField,
     CompositeKey,
     SqliteDatabase,
@@ -60,6 +61,14 @@ class Contest(BaseModel):
     def __str__(self):
         return f"Contest({self.name})"
 
+class ContestGroup(BaseModel):
+    """
+    Represents a group of contests.
+    """
+    id = IntegerField(primary_key=True)
+    name = CharField()
+    description = CharField()
+    update_date = DateTimeField()
 
 class Participation(BaseModel):
     """
@@ -79,6 +88,21 @@ class Participation(BaseModel):
             f"Participation(User: {self.user.username}, Contest: {self.contest.name})"
         )
 
+class ContestGroupContest(BaseModel):
+    """
+    Represents a relationship between a contest and a group of contests.
+    """
+    group = ForeignKeyField(ContestGroup, backref="contests")
+    contest = ForeignKeyField(Contest, backref="groups")
+
+    class Meta:
+        # Ensure that each (group, contest) pair is unique
+        primary_key = CompositeKey("group", "contest")
+
+    def __str__(self):
+        return (
+            f"ContestGroupContest(Contest: {self.contest.name}, Group: {self.group.name})"
+        )
 
 def import_contest_results(api_data: dict):
     """
