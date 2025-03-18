@@ -1,3 +1,4 @@
+import datetime
 from peewee import (
     Model,
     CharField,
@@ -65,8 +66,7 @@ class ContestGroup(BaseModel):
     """
     Represents a group of contests.
     """
-    id = IntegerField(primary_key=True)
-    name = CharField()
+    name = CharField(primary_key=True)
     description = CharField()
     update_date = DateTimeField()
 
@@ -103,6 +103,53 @@ class ContestGroupContest(BaseModel):
         return (
             f"ContestGroupContest(Contest: {self.contest.name}, Group: {self.group.name})"
         )
+
+def manage_a_group_of_contests(contest_group_opt: dict):
+    """
+    Manages a group of contests.
+    """
+    with db.atomic():
+        group, created = ContestGroup.get_or_create(
+            name=contest_group_opt["name"],
+            defaults={
+                "description": contest_group_opt["description"], 
+                "update_date": datetime.datetime.now()  # Set the update date to the current time.
+            },
+        )
+        if created:
+            print(f"Contest group '{group.name}' created.")
+        else:
+            print(f"Contest group '{group.name}' already exists.")
+            
+        if contest_group_opt["option"] == "descript":
+            group.description = contest_group_opt["description"]
+            group.save()
+            print(f"Contest group '{group.name}' description updated.")
+        elif contest_group_opt["option"] == "add":
+            for contest_id in contest_group_opt["contests"]:
+                contest_group_contest, created = ContestGroupContest.get_or_create(
+                    group=group,
+                    contest=Contest.get(Contest.id == contest_id), # add 操作之前，上层会 update 所有 id 对应的 contest 的信息，所以这里直接 get 即可。
+                )
+                if created:
+                    print(f"Contest '{contest_id}' added to group '{group.name}'.")
+                else:
+                    print(f"Contest '{contest_id}' already in group '{group.name}'.")
+        elif contest_group_opt["option"] == "remove":
+            for contest_id in contest_group_opt["contests"]:
+                try:
+                    contest_group_contest = ContestGroupContest.get(
+                        group=group,
+                        contest=Contest.get(Contest.id == contest_id),
+                    )
+                    contest_group_contest.delete_instance()
+                    print(f"Contest '{contest_id}' removed from group '{group.name}'.")
+                except DoesNotExist:
+                    print(f"Contest '{contest_id}' not in group '{group.name}'.")
+                
+        
+
+
 
 def import_contest_results(api_data: dict):
     """
@@ -172,6 +219,22 @@ def import_contest_results(api_data: dict):
                 print(
                     f"Participation for user '{username}' in contest '{contest.name}' updated."
                 )
+
+def get_contests_by_group(group_name: str):
+    """
+    Retrieve all contests in a given group by group name.
+
+    :param group_name: The name of the group.
+    :return: A list of Contest objects for that group.
+    """
+    try:
+        group = ContestGroup.get(ContestGroup.name == group_name)
+    except DoesNotExist:
+        print(f"Contest group '{group_name}' does not exist.")
+        return []
+
+    # Using the backref from ContestGroup to ContestGroupContest:
+    return list(group.contests)
 
 
 def get_participations_by_user(username: str):
