@@ -355,7 +355,7 @@ def create_contest_group(group_name):
         console.print(f"[bold red]Contest group '{group_name}' already exists.[/bold red]")
         return
     except DoesNotExist:
-        manage_a_group_of_contests({"name": group_name, "contests": [], "description": "", "options": "create"})
+        manage_a_group_of_contests({"name": group_name, "contests": [], "description": "", "option": "create"})
         console.print(f"[bold green]Contest group '{group_name}' created successfully.[/bold green]")
 
 @contestgroup.command("addcontest")
@@ -377,15 +377,14 @@ def add_contest_to_group(group_name, contest_id):
         contest_obj = Contest.get(Contest.id == contest_id)
     except DoesNotExist: # 比赛不在数据库中，自动调用contest get命令抓取
         console.print(f"[bold]Contest '{contest_id}' not found in database, trying to fetch it...[/bold]")
-        get(contest_id)
-        return
+        get([str(contest_id)])
 
     try:
-        ContestGroupContest.get(ContestGroupContest.contest_id == contest_obj.id, ContestGroupContest.contest_group_id == group_obj.id)
+        ContestGroupContest.get(ContestGroupContest.contest == contest_obj, ContestGroupContest.group == group_obj)
         console.print(f"[bold red]Contest '{contest_obj.name}' is already in group '{group_name}'.[/bold red]")
         return
     except DoesNotExist:
-        manage_a_group_of_contests({"name": group_name, "contests": [contest_id], "description": "", "options": "add"})
+        manage_a_group_of_contests({"name": group_name, "contests": [contest_id], "description": "", "option": "add"})
         console.print(f"[bold green]Contest '{contest_obj.name}' added to group '{group_name}' successfully.[/bold green]")
         
 @contestgroup.command("removecontest")
@@ -410,12 +409,84 @@ def remove_contest_from_group(group_name, contest_id):
         return
 
     try:
-        ContestGroupContest.get(ContestGroupContest.contest_id == contest_obj.id, ContestGroupContest.contest_group_id == group_obj.id)
-        manage_a_group_of_contests({"name": group_name, "contests": [contest_id], "description": "", "options": "remove"})
+        ContestGroupContest.get(ContestGroupContest.contest == contest_obj, ContestGroupContest.group == group_obj)
+        manage_a_group_of_contests({"name": group_name, "contests": [contest_id], "description": "", "option": "remove"})
         console.print(f"[bold green]Contest '{contest_obj.name}' removed from group '{group_name}' successfully.[/bold green]")
     except DoesNotExist:
         console.print(f"[bold red]Contest '{contest_obj.name}' is not in group '{group_name}'.[/bold red]")
 
+@contestgroup.command("list")
+def list_contest_groups():
+    """
+    List all contest groups in the database.
+
+    Example: pyjiaxun contestgroup list
+    """
+    table = Table(title="Contest Group List")
+    table.add_column("Name", style="cyan")
+    table.add_column("Contests", justify="right")
+    table.add_column("Description", justify="right")
+
+    for group in ContestGroup.select():
+        # Count the number of contests in the group.
+        contests_count = group.contests.count()
+        table.add_row(
+            group.name,
+            str(contests_count),
+            group.description,
+        )
+
+    console.print(table)
+    
+@contestgroup.command("show-contests")
+@click.argument("group_name")
+def show_contests_in_group(group_name):
+    """
+    Show all contests in a group.
+
+    Example: pyjiaxun contestgroup show-contests group1
+    """
+    try:
+        group_obj = ContestGroup.get(ContestGroup.name == group_name)
+    except DoesNotExist:
+        console.print(f"[bold red]Contest group '{group_name}' not found in database.[/bold red]")
+        return
+
+    table = Table(title=f"Contests in {group_name}")
+    table.add_column("ID", justify="right")
+    table.add_column("Name", style="cyan")
+    table.add_column("Duration", justify="right")
+    table.add_column("Problem Count", justify="right")
+
+    for contest_group_contest in group_obj.contests:
+        contest_obj = contest_group_contest.contest
+        table.add_row(
+            str(contest_obj.id),
+            contest_obj.name,
+            str(contest_obj.duration),
+            str(contest_obj.prob_count),
+        )
+
+    console.print(table)
+    
+@contestgroup.command("fetch-all")
+@click.argument("group_name")
+def fetch_all_contests_in_group(group_name):
+    """
+    Fetch all contests in a group.
+
+    Example: pyjiaxun contestgroup fetch-all group1
+    """
+    try:
+        group_obj = ContestGroup.get(ContestGroup.name == group_name)
+    except DoesNotExist:
+        console.print(f"[bold red]Contest group '{group_name}' not found in database.[/bold red]")
+        return
+
+    for contest_group_contest in group_obj.contests:
+        contest_obj = contest_group_contest.contest
+        get([str(contest_obj.id)])
+        console.print(f"[bold green]Contest '{contest_obj.name}' fetched successfully.[/bold green]")
 
 
 if __name__ == "__main__":
